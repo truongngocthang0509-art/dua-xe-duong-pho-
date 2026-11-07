@@ -163,7 +163,9 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
   <div class="opts" id="hModes"></div>
   <input class="inp" id="hId" maxlength="8" placeholder="Nhập ID phòng để ghép trận" autocomplete="off" style="margin:12px 0">
   <div class="row"><button class="go" id="hCreate" type="button">Tạo phòng</button><button class="go alt" id="hJoin" type="button">Vào phòng</button></div>
-  <p class="msg2" id="hMsg"></p><button class="go alt" id="hOut" type="button">Đăng xuất</button>
+  <p class="msg2" id="hMsg"></p>
+  <p>Không vào được phòng online? Đấu trực tiếp 1v1, không cần tài khoản hay máy chủ:</p>
+  <div class="row"><button class="go alt" id="hP2Pc" type="button">Tạo phòng trực tiếp (1v1)</button><button class="go alt" id="hP2Pj" type="button">Vào bằng mã</button></div><button class="go alt" id="hOut" type="button">Đăng xuất</button>
 </div></div>
 <div class="ov" id="wait" hidden style="z-index:12"><div class="panel">
   <h2>Phòng <b id="wCode"></b> · <span id="wMode"></span></h2>
@@ -176,6 +178,14 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
   <h2>🔧 Xưởng chế tạo</h2>
   <div class="shopGrid"><div><canvas id="pv"></canvas><p id="pvStat"></p></div><div id="shopCtl"></div></div>
   <div class="row"><button class="go" id="shopOk" type="button">Lưu và đóng</button><button class="go alt" id="shopReset" type="button">Về mẫu gốc</button></div>
+</div></div>
+<div class="ov" id="p2p" hidden style="z-index:16"><div class="panel">
+  <h2>Đấu trực tiếp 1v1</h2><p id="pHint"></p>
+  <b>Mã của bạn</b><textarea class="inp" id="pOut" rows="3" readonly></textarea>
+  <div class="row"><button class="go alt" id="pCopy" type="button">Sao chép</button></div>
+  <b>Dán mã nhận được vào đây</b><textarea class="inp" id="pIn" rows="3"></textarea>
+  <p class="msg2" id="pMsg"></p>
+  <div class="row"><button class="go" id="pGo" type="button">Kết nối</button><button class="go alt" id="pX" type="button">Đóng</button></div>
 </div></div>
 <div class="ov res" id="end" hidden></div>
 
@@ -648,7 +658,7 @@ function setForm(f,auto){S.form=f;S.auto=!!auto;S.tf=.8;poof(player);sfx('morph'
 function toggleForm(){if(!S||!S.run||S.cd>0||S.tf>0)return;setForm(S.form=='car'?'run':'car',false);say(S.form=='run'?'HÓA HÌNH! Chạy bộ nào 🐾':'Lên xe! 🏎️')}
 function toggleFS(){try{const r=document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();if(r&&r.catch)r.catch(()=>say('Trình duyệt không cho bật toàn màn hình'))}catch(e){say('Trình duyệt không cho bật toàn màn hình')}}
 $('muBtn').onclick=()=>AU.mute();$('camBtn').onclick=toggleCam;$('fsBtn').onclick=toggleFS;$('fsBtn2').onclick=toggleFS;
-addEventListener('keydown',e=>{if(e.target&&e.target.tagName=='INPUT')return;
+addEventListener('keydown',e=>{if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;
 if(e.code=='ArrowLeft'||e.code=='KeyA')keys.l=1;if(e.code=='ArrowRight'||e.code=='KeyD')keys.r=1;
 if(e.code=='ArrowUp'||e.code=='KeyW')keys.g=1;if(e.code=='ArrowDown'||e.code=='KeyS')keys.b=1;if(e.code=='Space')keys.j=1;if(e.code=='ShiftLeft'||e.code=='ShiftRight'||e.code=='KeyN')keys.n=1;if(e.code=='KeyE')keys.t=1;
 if(!e.repeat){if(e.code=='KeyM')AU.mute();if(e.code=='KeyC')toggleCam();if(e.code=='KeyT')toggleForm();if(e.code=='KeyF')toggleFS()}
@@ -841,6 +851,32 @@ acc={id:'local:'+n.toLowerCase(),name:n,emo:emoSel,w:0,l:0,local:true};sh('aLoca
 $('lLogin').onclick=async()=>{const n=$('lName').value.trim(),p=$('lPin').value,o=n&&lsGet(n);
 if(!o||o.h!==await hashPin(n,p)){tx('aMsg','Sai biệt danh hoặc PIN (tài khoản này chỉ lưu trên trình duyệt hiện tại).');return}
 acc={id:'local:'+n.toLowerCase(),name:o.name,emo:o.emo||'🐱',w:o.w|0,l:o.l|0,local:true};if(o.rig){RIG=sanRig(o.rig);syncTune()}sh('aLocal',false);enterHub()};
+// ---- đấu trực tiếp 1v1 giữa hai trình duyệt (WebRTC, trao đổi mã bằng tay, không cần máy chủ) ----
+let rtc=null,p2pRole='';
+const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))),dec=s=>JSON.parse(decodeURIComponent(escape(atob(s.trim()))));
+const newPC=()=>new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
+const waitIce=p=>new Promise(r=>{if(p.iceGatheringState=='complete')return r();const f=()=>{if(p.iceGatheringState=='complete'){p.removeEventListener('icegatheringstatechange',f);r()}};p.addEventListener('icegatheringstatechange',f);setTimeout(r,5000)});
+function mkP2P(dc,role){const me=role=='h'?'a':'b',ot=role=='h'?'b':'a';let mp={},op=null,hs={},ph=[];
+const peers=()=>{const a=[{peer:me,isMe:true,presence:mp}];if(op)a.push({peer:ot,isMe:false,presence:op});return a},note=()=>ph.forEach(f=>f({peers:peers()}));
+const hd=raw=>{let m;try{m=JSON.parse(raw)}catch(_){return}if(m.t=='pres'){op=m.d;note()}else if(m.t=='ev')(hs[m.topic]||[]).forEach(f=>f({peer:ot,isMe:false,data:m.data}))};
+dc.onmessage=e=>hd(e.data);(dc._q||[]).forEach(hd);dc.onclose=()=>{op=null;note()};
+const snd=o=>{if(dc.readyState=='open')dc.send(JSON.stringify(o))};
+return{emit:async(t,d)=>{snd({t:'ev',topic:t,data:d})},on:(t,f)=>{(hs[t]=hs[t]||[]).push(f);return()=>{hs[t]=hs[t].filter(x=>x!==f)}},
+presence:async p=>{Object.assign(mp,p);snd({t:'pres',d:mp});note()},peers,onPeers:f=>{ph.push(f);setTimeout(()=>f({peers:peers()}),0);return()=>{ph=ph.filter(x=>x!==f)}},
+leave:()=>{try{dc.close();rtc&&rtc.close()}catch(_){}},connected:()=>dc.readyState=='open'}}
+function wireDC(dc){dc._q=[];dc.onmessage=e=>dc._q.push(e.data);dc.onopen=()=>{sh('p2p',false);enterRoom(mkP2P(dc,p2pRole),'direct',p2pRole=='h'?1:0)}}
+function openP2P(h,b){tx('pHint',h);tx('pGo',b);tx('pMsg','');$('pIn').value='';sh('p2p',true)}
+$('hP2Pc').onclick=async()=>{if(typeof RTCPeerConnection=='undefined'){tx('hMsg','Trình duyệt này không hỗ trợ đấu trực tiếp.');return}
+p2pRole='h';openP2P('Bạn là chủ phòng. Bước 1: gửi "Mã của bạn" cho bạn bè (Zalo, Messenger...). Bước 2: dán mã trả lời của họ vào ô dưới rồi bấm Kết nối.','Kết nối');
+$('pOut').value='Đang tạo mã...';rtc=newPC();const dc=rtc.createDataChannel('g');wireDC(dc);await rtc.setLocalDescription(await rtc.createOffer());await waitIce(rtc);$('pOut').value=enc(rtc.localDescription)};
+$('hP2Pj').onclick=()=>{if(typeof RTCPeerConnection=='undefined'){tx('hMsg','Trình duyệt này không hỗ trợ đấu trực tiếp.');return}
+p2pRole='g';$('pOut').value='';openP2P('Dán mã của chủ phòng vào ô dưới, bấm Tạo mã trả lời, rồi gửi mã trả lời hiện ra ở "Mã của bạn" lại cho chủ phòng.','Tạo mã trả lời')};
+$('pGo').onclick=async()=>{try{
+if(p2pRole=='h'){await rtc.setRemoteDescription(dec($('pIn').value));tx('pMsg','Đang kết nối...')}
+else{rtc=newPC();rtc.ondatachannel=e=>wireDC(e.channel);await rtc.setRemoteDescription(dec($('pIn').value));await rtc.setLocalDescription(await rtc.createAnswer());await waitIce(rtc);$('pOut').value=enc(rtc.localDescription);tx('pMsg','Gửi mã ở trên cho chủ phòng, đang chờ họ kết nối...')}}
+catch(_){tx('pMsg','Mã không hợp lệ hoặc không kết nối được. Hãy tạo mã mới.')}};
+$('pCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('pOut').value);tx('pMsg','Đã sao chép.')}catch(_){$('pOut').select();tx('pMsg','Hãy bấm giữ để sao chép.')}};
+$('pX').onclick=()=>{sh('p2p',false);try{rtc&&rtc.close()}catch(_){}rtc=null};
 async function login(){tx('aMsg','Đang đăng nhập...');let u=null;try{u=typeof claude!='undefined'&&await claude.use('user')}catch(_){}
 const id=u?await u.id():null;
 if(!id){tx('aMsg','Không đăng nhập được bằng claude.ai ở đây. Hãy dùng "Biệt danh + PIN" hoặc Chơi khách.');return}
@@ -863,8 +899,11 @@ $('hJoin').onclick=()=>{const c=$('hId').value.trim().toLowerCase().replace(/[^a
 $('toHub').onclick=()=>{if(!acc)acc={id:null,name:'Khách',emo:'🐾'};sh('menu',false);enterHub()};
 const pushPres=()=>{if(NET.nr)NET.nr.presence({n:acc.name,e:acc.emo,t:NET.team,r:NET.ready,m:NET.mode,c:sel,g:encRig(RIG)})};
 async function joinRoom(code,mode){tx('hMsg','Đang vào phòng...');let room=null;try{room=typeof claude!='undefined'&&await claude.use('room')}catch(_){}
-if(!room){tx('hMsg','Phòng online chưa dùng được ở đây. Hãy nhờ chủ trang mời bạn làm khách qua nút Chia sẻ, rồi mở lại link được mời.');return}
+if(!room){if(mode<2){tx('hMsg','Phòng online không dùng được ở đây nên chuyển sang đấu trực tiếp 1v1.');$(mode?'hP2Pc':'hP2Pj').onclick();return}
+tx('hMsg','Phòng online không dùng được ở đây. 2v2 và 3v3 cần phòng online, hãy chọn 1v1 để đấu trực tiếp.');return}
 let nr;try{nr=await room.join('eola-'+code)}catch(_){tx('hMsg','Không vào được phòng, thử lại.');return}
+return enterRoom(nr,code,mode)}
+function enterRoom(nr,code,mode){
 Object.assign(NET,{nr,code,mode,team:0,teamSet:!!mode,ready:0,peers:[]});
 NET.offs.push(nr.on('p',m=>{if(m.isMe)return;const r=riv.find(q=>q.pid===m.peer);if(r)r.nd=m.data}));
 NET.offs.push(nr.on('go',()=>startNet()));
