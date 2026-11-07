@@ -154,7 +154,8 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
 </div>
 <div class="ov" id="auth" style="z-index:14"><div class="panel">
   <h1>F1 Ẻo Lả</h1><p id="aMsg">Đăng nhập để lưu thành tích và đua online, hoặc chơi khách.</p>
-  <div class="row" id="aBtns"><button class="go" id="aLogin" type="button">Đăng nhập</button><button class="go alt" id="aGuest" type="button">Chơi khách</button></div>
+  <div class="row" id="aBtns"><button class="go" id="aLogin" type="button">Đăng nhập</button><button class="go alt" id="aDev" type="button">Biệt danh + PIN (ngoài claude.ai)</button><button class="go alt" id="aGuest" type="button">Chơi khách</button></div>
+  <div id="aLocal" hidden><input class="inp" id="lName" maxlength="14" placeholder="Biệt danh" autocomplete="username"><input class="inp" id="lPin" type="password" inputmode="numeric" maxlength="8" placeholder="Mã PIN 4–8 chữ số" autocomplete="current-password" style="margin-top:8px"><div class="opts" id="lEmo" style="margin:10px 0"></div><div class="row"><button class="go" id="lLogin" type="button">Đăng nhập</button><button class="go alt" id="lReg" type="button">Tạo tài khoản</button><button class="go alt" id="lBack" type="button">Quay lại</button></div></div>
   <div id="aReg" hidden><input class="inp" id="aName" maxlength="14" placeholder="Biệt danh của bạn" autocomplete="off"><div class="opts" id="aEmo" style="margin:10px 0"></div><button class="go" id="aCreate" type="button">Tạo tài khoản</button></div>
 </div></div>
 <div class="ov" id="hub" hidden style="z-index:13"><div class="panel">
@@ -748,7 +749,7 @@ let best=null,rec=false;try{best=JSON.parse(localStorage.getItem('eolaBest')||'n
 if(!best||S.t<best.t){rec=true;best={t:S.t,who:S.h.n};try{localStorage.setItem('eolaBest',JSON.stringify(best))}catch(_){}}
 let tl='';if(NET.on){const s2=[0,0];rows.forEach((r,i)=>{s2[r.team|0]+=i+1});const my=S.team|0,win=s2[my]<s2[1-my];
 tl=s2[0]==s2[1]?'Hòa đội! ':'Đội '+(s2[0]<s2[1]?'🔴 Đỏ':'🔵 Xanh')+' thắng ';tl+='('+s2[0]+' - '+s2[1]+' điểm, thấp hơn là tốt)';
-if(acc&&acc.id&&NET.db&&s2[0]!=s2[1]){acc.w=(acc.w|0)+(win?1:0);acc.l=(acc.l|0)+(win?0:1);try{NET.db.doc('data/users/'+acc.id+'/profile').set({name:acc.name,emo:acc.emo,w:acc.w,l:acc.l}).catch(()=>{})}catch(_){}}}
+if(acc&&acc.id&&s2[0]!=s2[1]){acc.w=(acc.w|0)+(win?1:0);acc.l=(acc.l|0)+(win?0:1);saveProf()}}
 const msg=rank==1?'VÔ ĐỊCH F1! Phun sâm panh!':rank==2?'Hạng nhì, lên bục rồi!':'Hạng '+rank+', về garage khóc thôi...';
 const e=$('end');e.innerHTML=`<div class="panel"><div class="big">${S.h.e}</div><h2>${msg}</h2>
 ${tl?'<p><b>'+tl+'</b></p>':''}<div class="stats"><span>Thời gian ${fmt(S.t)}</span><span>Điểm ⭐ ${S.score}</span></div>
@@ -821,9 +822,28 @@ const GP=$('garage').parentNode,GN=$('garage').nextSibling;
 const rcode=()=>Array.from({length:5},()=>'abcdefghjkmnpqrstuvwxyz23456789'[Math.random()*31|0]).join('');
 function pills(el,list,get,set){el.textContent='';list.forEach((t,i)=>{const b=document.createElement('button');b.type='button';b.className='opt'+(get(i)?' sel':'');b.textContent=t;b.onclick=()=>{set(i);pills(el,list,get,set)};el.appendChild(b)})}
 addEventListener('pointerdown',()=>AU.init(),{once:true});
+// ---- tài khoản lưu ngay trên trình duyệt (dùng được ngoài claude.ai) ----
+const lsk=n=>'eola.u.'+n.trim().toLowerCase();
+const lsGet=n=>{try{return JSON.parse(localStorage.getItem(lsk(n)))}catch(_){return null}};
+const lsSet=(n,o)=>{try{localStorage.setItem(lsk(n),JSON.stringify(o));return true}catch(_){return false}};
+const hashPin=async(n,p)=>{try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('eola|'+n.trim().toLowerCase()+'|'+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(_){return'p'+btoa(p)}};
+function saveProf(){if(!acc||!acc.id)return;if(acc.local){const o=lsGet(acc.name)||{};lsSet(acc.name,{...o,emo:acc.emo,w:acc.w|0,l:acc.l|0})}
+else if(NET.db)try{NET.db.doc('data/users/'+acc.id+'/profile').set({name:acc.name,emo:acc.emo,w:acc.w,l:acc.l}).catch(()=>{})}catch(_){}}
+function saveRig(){if(!acc||!acc.id)return;if(acc.local){const o=lsGet(acc.name)||{};o.rig=RIG;lsSet(acc.name,o)}
+else if(NET.db)try{NET.db.doc('data/users/'+acc.id+'/rig').set(RIG).catch(()=>{})}catch(_){}}
+$('aDev').onclick=()=>{sh('aBtns',false);sh('aLocal',true);tx('aMsg','Tài khoản lưu ngay trên trình duyệt này, dùng được ở bất cứ đâu.');pills($('lEmo'),EMO,i=>EMO[i]==emoSel,i=>{emoSel=EMO[i]})};
+$('lBack').onclick=()=>{sh('aLocal',false);sh('aBtns',true)};
+$('lReg').onclick=async()=>{const n=$('lName').value.trim().slice(0,14),p=$('lPin').value;
+if(!n||!/^\d{4,8}$/.test(p)){tx('aMsg','Nhập biệt danh và mã PIN 4–8 chữ số.');return}
+if(lsGet(n)){tx('aMsg','Biệt danh này đã có trên trình duyệt này, hãy đăng nhập.');return}
+if(!lsSet(n,{name:n,emo:emoSel,h:await hashPin(n,p),w:0,l:0})){tx('aMsg','Trình duyệt chặn lưu dữ liệu nên không tạo được. Bạn vẫn chơi khách được.');return}
+acc={id:'local:'+n.toLowerCase(),name:n,emo:emoSel,w:0,l:0,local:true};sh('aLocal',false);enterHub()};
+$('lLogin').onclick=async()=>{const n=$('lName').value.trim(),p=$('lPin').value,o=n&&lsGet(n);
+if(!o||o.h!==await hashPin(n,p)){tx('aMsg','Sai biệt danh hoặc PIN (tài khoản này chỉ lưu trên trình duyệt hiện tại).');return}
+acc={id:'local:'+n.toLowerCase(),name:o.name,emo:o.emo||'🐱',w:o.w|0,l:o.l|0,local:true};if(o.rig){RIG=sanRig(o.rig);syncTune()}sh('aLocal',false);enterHub()};
 async function login(){tx('aMsg','Đang đăng nhập...');let u=null;try{u=typeof claude!='undefined'&&await claude.use('user')}catch(_){}
 const id=u?await u.id():null;
-if(!id){tx('aMsg','Không đăng nhập được. Hãy mở trang này trong claude.ai, hoặc bấm Chơi khách.');return}
+if(!id){tx('aMsg','Không đăng nhập được bằng claude.ai ở đây. Hãy dùng "Biệt danh + PIN" hoặc Chơi khách.');return}
 NET.uid=id;try{NET.db=await claude.use('db')}catch(_){}
 try{if(NET.db){const s2=await NET.db.doc('data/users/'+id+'/rig').get();if(s2.exists){RIG=sanRig(s2.data());syncTune()}}}catch(_){}
 let p=null;try{if(NET.db){const s=await NET.db.doc('data/users/'+id+'/profile').get();if(s.exists)p=s.data()}}catch(_){}
@@ -837,13 +857,13 @@ $('aLogin').onclick=login;
 $('aGuest').onclick=()=>{acc={id:null,name:'Khách'+(100+Math.random()*900|0),emo:'🐾'};enterHub()};
 $('aCreate').onclick=async()=>{const n=$('aName').value.trim().slice(0,14);if(!n){tx('aMsg','Nhập biệt danh nhé!');return}
 acc={id:NET.uid,name:n,emo:emoSel,w:0,l:0};try{if(NET.db)await NET.db.doc('data/users/'+NET.uid+'/profile').set({name:n,emo:emoSel,w:0,l:0})}catch(_){}enterHub()};
-$('hOut').onclick=()=>{acc=null;sh('hub',false);sh('auth',true);sh('aBtns',true);sh('aReg',false);tx('aMsg','Đã đăng xuất.')};
+$('hOut').onclick=()=>{acc=null;sh('hub',false);sh('auth',true);sh('aBtns',true);sh('aReg',false);sh('aLocal',false);tx('aMsg','Đã đăng xuất.')};
 $('hCreate').onclick=()=>{if(!hubMode){sh('hub',false);sh('menu',true);return}joinRoom(rcode(),hubMode)};
 $('hJoin').onclick=()=>{const c=$('hId').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');if(c.length<3){tx('hMsg','Nhập ID phòng (ít nhất 3 ký tự).');return}joinRoom(c,0)};
 $('toHub').onclick=()=>{if(!acc)acc={id:null,name:'Khách',emo:'🐾'};sh('menu',false);enterHub()};
 const pushPres=()=>{if(NET.nr)NET.nr.presence({n:acc.name,e:acc.emo,t:NET.team,r:NET.ready,m:NET.mode,c:sel,g:encRig(RIG)})};
 async function joinRoom(code,mode){tx('hMsg','Đang vào phòng...');let room=null;try{room=typeof claude!='undefined'&&await claude.use('room')}catch(_){}
-if(!room){tx('hMsg','Phòng online cần mở trang trong claude.ai (đã đăng nhập).');return}
+if(!room){tx('hMsg','Phòng online chưa dùng được ở đây. Hãy nhờ chủ trang mời bạn làm khách qua nút Chia sẻ, rồi mở lại link được mời.');return}
 let nr;try{nr=await room.join('eola-'+code)}catch(_){tx('hMsg','Không vào được phòng, thử lại.');return}
 Object.assign(NET,{nr,code,mode,team:0,teamSet:!!mode,ready:0,peers:[]});
 NET.offs.push(nr.on('p',m=>{if(m.isMe)return;const r=riv.find(q=>q.pid===m.peer);if(r)r.nd=m.data}));
@@ -936,7 +956,7 @@ function shopRefresh(){syncTune();shopUI();pvBuild()}
 function openShop(){sh('shop',true);pvInit();pvOn=true;shopRefresh();pvLoop()}
 $('toShop').onclick=openShop;$('wShop').onclick=openShop;
 $('shopReset').onclick=()=>{RIG=mkRig(sel);shopRefresh()};
-$('shopOk').onclick=()=>{pvOn=false;sh('shop',false);syncTune();if(acc&&acc.id&&NET.db)try{NET.db.doc('data/users/'+acc.id+'/rig').set(RIG).catch(()=>{})}catch(_){}pushPres()};
+$('shopOk').onclick=()=>{pvOn=false;sh('shop',false);syncTune();saveRig();pushPres()};
 $('garage').hidden=true;
 })();
 </script>
