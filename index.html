@@ -1351,11 +1351,14 @@ if(d.mp!==MAPID){try{window.name='eolaMap='+d.mp+';eolaS='+encodeURIComponent(JS
 if(NET.nr)leaveRoom();joinRoom(d.c,0)};
 
 const pushPres=()=>{if(NET.nr)NET.nr.presence({n:acc.name,e:acc.emo,t:NET.team,r:NET.ready,m:NET.mode,c:sel,g:encRig(RIG),mp:curMap})};
-async function joinRoom(code,mode){tx('hMsg','Đang vào phòng...');let room=null;try{room=typeof claude!='undefined'&&await claude.use('room')}catch(_){}
+let roomBusy=0;
+async function joinRoom(code,mode){if(roomBusy)return;roomBusy=1;
+try{tx('hMsg','Đang vào phòng...');const room=await getRoomCap();
 if(!room){if(mode<2){tx('hMsg','Phòng online không dùng được ở đây nên chuyển sang đấu trực tiếp 1v1.');$(mode?'hP2Pc':'hP2Pj').onclick();return}
-tx('hMsg','Phòng online không dùng được ở đây. 2v2 và 3v3 cần phòng online, hãy chọn 1v1 để đấu trực tiếp.');return}
-let nr;try{nr=await room.join('eola-'+code)}catch(_){tx('hMsg','Không vào được phòng, thử lại.');return}
-return enterRoom(nr,code,mode)}
+tx('hMsg','2v2 và 3v3 cần phòng online. Hãy chọn 1v1 để đấu trực tiếp.');return}
+let nr=null;try{nr=await room.join('eola-'+code)}catch(_){}
+if(!nr){tx('hMsg','Không vào được phòng, thử lại.');return}
+enterRoom(nr,code,mode)}finally{roomBusy=0}}
 function enterRoom(nr,code,mode){
 Object.assign(NET,{nr,code,mode,team:0,teamSet:!!mode,ready:0,peers:[]});
 NET.offs.push(nr.on('p',m=>{if(m.isMe)return;const r=riv.find(q=>q.pid===m.peer);if(r)r.nd=m.data}));
@@ -1364,7 +1367,7 @@ NET.offs.push(nr.on('hit',m=>{if(m.isMe||!m.data)return;const me=NET.peers.find(
 NET.un=nr.onPeers(ch=>{NET.peers=ch.peers;if(!NET.mode){const q=ch.peers.find(p=>p.presence&&p.presence.m);if(q)NET.mode=q.presence.m|0}renderWait()});
 pushPres();clearInterval(NET.iv);NET.iv=setInterval(pushPres,1000);
 hideLobby();sh('wait',true);renderWait();
-if(!mode)setTimeout(()=>{if(NET.nr===nr&&!NET.mode){leaveRoom();tx('hMsg','Không tìm thấy phòng '+code.toUpperCase()+'. Kiểm tra lại ID.')}},4000)}
+if(!mode)setTimeout(()=>{if(NET.nr===nr&&!NET.mode)leaveRoom('Không tìm thấy phòng '+code.toUpperCase()+'. Kiểm tra lại ID.')},4000)}
 function renderWait(){const ps=NET.peers.filter(p=>p.presence&&p.presence.n);
 if(!NET.teamSet&&ps.length){const c=[0,0];ps.forEach(p=>{if(!p.isMe)c[p.presence.t|0]++});NET.team=c[0]<=c[1]?0:1;NET.teamSet=true;pushPres()}
 tx('wCode',NET.code.toUpperCase());tx('wMode',NET.mode?NET.mode+'v'+NET.mode:'đang tìm phòng...');
@@ -1377,8 +1380,8 @@ $('wTeam').onclick=()=>{NET.team^=1;NET.ready=0;pushPres()};
 $('wReady').onclick=()=>{NET.ready^=1;pushPres()};
 $('wStart').onclick=()=>{NET.nr.emit('go',{}).catch(()=>{});startNet()};
 $('wLeave').onclick=()=>leaveRoom();
-function leaveRoom(){clearInterval(NET.iv);NET.offs.forEach(f=>f());NET.offs=[];try{NET.un&&NET.un()}catch(_){}try{NET.nr&&NET.nr.leave()}catch(_){}
-NET.nr=null;NET.on=false;NET.teamSet=false;NET.ready=0;NET.mode=0;sh('wait',false);showLobby();if(acc)enterHub()}
+function leaveRoom(msg){clearInterval(NET.iv);NET.offs.forEach(f=>f());NET.offs=[];try{NET.un&&NET.un()}catch(_){}try{NET.nr&&NET.nr.leave()}catch(_){}
+NET.nr=null;NET.on=false;NET.teamSet=false;NET.ready=0;NET.mode=0;sh('wait',false);acc?enterHub():showLobby();tx('hMsg',msg||'')}
 function backToRoom(){NET.on=false;NET.ready=0;$('end').hidden=true;$('hud').hidden=true;sh('wait',true);pushPres();clearInterval(NET.iv);NET.iv=setInterval(pushPres,1000);renderWait()}
 function startNet(){if(NET.on||!NET.nr)return;const ps=NET.peers.filter(p=>p.presence&&p.presence.n).sort((a,b)=>a.peer<b.peer?-1:1),i=ps.findIndex(p=>p.isMe);if(i<0)return;
 NET.on=true;clearInterval(NET.iv);NET.lane=i%4;NET.row=i/4|0;NET.snap=ps.filter(p=>!p.isMe);NET.sendT=0;sh('wait',false);start()}
