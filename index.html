@@ -124,6 +124,8 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
 #brk{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(120px + env(safe-area-inset-bottom,0px));pointer-events:auto;width:84px;height:84px;border-radius:50%;background:#ff3d6e;color:#fff;border:3px solid #fff;font:400 15px/1.1 var(--display);touch-action:none;box-shadow:0 5px 0 #a01838;cursor:pointer}#brk:active{transform:translateY(3px);box-shadow:0 2px 0 #a01838}
 #gh small{display:block;font-weight:800;font-size:12px}#gh button{width:38px;height:34px;border-radius:9px;border:0;background:var(--card);color:var(--ink);font-weight:900;cursor:pointer;margin-left:4px}
 .msg2{min-height:1.4em;color:var(--pink)}
+.frList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.frList li{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:8px 10px}.frList .nm{flex:1;min-width:0;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.frList .dot{width:10px;height:10px;border-radius:50%;background:#777;flex:none}.frList .dot.on{background:#5fe3b0}.frList button{font:800 14px var(--body);padding:6px 10px}
+#invT{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:30;background:var(--card);border:3px solid var(--sun);border-radius:16px;padding:10px 14px;display:flex;gap:10px;align-items:center;font-weight:800;max-width:calc(100vw - 24px)}#invT[hidden]{display:none}
 #flash{position:fixed;inset:0;z-index:5;background:radial-gradient(ellipse at center,rgba(255,230,180,0) 35%,rgba(255,110,30,.9) 100%);opacity:0;pointer-events:none}
 #fx{position:fixed;inset:0;z-index:2;pointer-events:none;width:100%;height:100%}
 #nglow,#dglow,#nkick{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0}
@@ -201,7 +203,7 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
   <header class="lobTop">
     <div class="lobBrand">F1 Ẻo Lả<small>GRAND PRIX · SẢNH</small></div>
     <div class="lobWho"><b id="hWho"></b><span id="hStat"></span></div>
-    <div class="lobTools"><button class="tool" id="lobHelp" type="button">❓ Hướng dẫn</button><button class="tool" id="lobFs" type="button">⛶</button><button class="tool" id="hOut" type="button">Đăng xuất</button></div>
+    <div class="lobTools"><button class="tool" id="lobFr" type="button">👥 Bạn bè</button><button class="tool" id="lobHelp" type="button">❓ Hướng dẫn</button><button class="tool" id="lobFs" type="button">⛶</button><button class="tool" id="hOut" type="button">Đăng xuất</button></div>
   </header>
   <section class="lobL" id="lobL"><h3>🔧 Garage: lắp trang bị &amp; thiết kế xe</h3><div id="shopCtl"></div><div class="row" id="shopFoot"><button class="go alt" id="shopReset" type="button">Về mẫu gốc</button></div></section>
   <section class="lobC" id="lobC"><canvas id="pv"></canvas><div class="lobCar" id="lobCar"><b id="lobName"></b><p id="pvStat"></p></div><button class="go big" id="lobGo" type="button">▶ XUẤT PHÁT</button></section>
@@ -225,7 +227,7 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
   <h2>Phòng <b id="wCode"></b> · <span id="wMode"></span></h2>
   <div class="tm"><div><h3>🔴 Đội Đỏ</h3><ul id="wT0"></ul></div><div><h3>🔵 Đội Xanh</h3><ul id="wT1"></ul></div></div>
   <p class="msg2" id="wMsg"></p>
-  <div class="row"><button class="go alt" id="wTeam" type="button">Đổi đội</button><button class="go alt" id="wShop" type="button">🔧 Xưởng</button><button class="go alt" id="wReady" type="button">Sẵn sàng</button><button class="go" id="wStart" type="button" hidden>Bắt đầu</button><button class="go alt" id="wLeave" type="button">Rời phòng</button></div>
+  <div class="row"><button class="go alt" id="wTeam" type="button">Đổi đội</button><button class="go alt" id="wShop" type="button">🔧 Xưởng</button><button class="go alt" id="wFr" type="button">👥 Mời bạn</button><button class="go alt" id="wReady" type="button">Sẵn sàng</button><button class="go" id="wStart" type="button" hidden>Bắt đầu</button><button class="go alt" id="wLeave" type="button">Rời phòng</button></div>
   <div id="wSlot"></div>
 </div></div>
 <div class="ov" id="shop" hidden style="z-index:15"><div class="panel shop">
@@ -233,6 +235,15 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
   <div class="shopGrid"><div id="shopDockA"></div><div id="shopDockB"></div></div>
   <div class="row"><button class="go" id="shopOk" type="button">Lưu và đóng</button></div>
 </div></div>
+<div class="ov" id="fr" hidden style="z-index:17"><div class="panel">
+<h2>👥 Bạn bè</h2>
+<div class="codeBox"><span>ID của bạn (gửi cho bạn bè)</span><b id="frMy">------</b><button class="tool" id="frCp" type="button" title="Sao chép">📋</button></div>
+<div class="joinRow"><input class="inp" id="frId" maxlength="8" placeholder="Nhập ID bạn bè" autocomplete="off"><button class="go alt" id="frAdd" type="button">Kết bạn</button></div>
+<p class="msg2" id="frMsg"></p>
+<ul class="frList" id="frList"></ul>
+<div class="row"><button class="go alt" id="frRef" type="button">🔄 Kiểm tra online</button><button class="go" id="frX" type="button">Đóng</button></div>
+</div></div>
+<div id="invT" hidden><span id="invTx"></span><button class="go" id="invOk" type="button">Vào</button><button class="tool" id="invNo" type="button">✕</button></div>
 <div class="ov" id="help" hidden style="z-index:16"><div class="panel"><h2>Hướng dẫn chơi</h2><div id="helpBody"></div><button class="go" id="helpX" type="button">Đóng</button></div></div>
 <div class="ov" id="p2p" hidden style="z-index:16"><div class="panel">
   <h2>Đấu trực tiếp 1v1</h2><p id="pHint"></p>
@@ -1223,7 +1234,7 @@ const lsGet=n=>{try{return JSON.parse(localStorage.getItem(lsk(n)))}catch(_){ret
 const lsSet=(n,o)=>{try{localStorage.setItem(lsk(n),JSON.stringify(o));return true}catch(_){return false}};
 const hashPin=async(n,p)=>{try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('eola|'+n.trim().toLowerCase()+'|'+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(_){return'p'+btoa(p)}};
 function saveProf(){if(!acc||!acc.id)return;if(acc.local){const o=lsGet(acc.name)||{};lsSet(acc.name,{...o,emo:acc.emo,w:acc.w|0,l:acc.l|0})}
-else if(NET.db)try{NET.db.doc('data/users/'+acc.id+'/profile').set({name:acc.name,emo:acc.emo,w:acc.w,l:acc.l}).catch(()=>{})}catch(_){}}
+else if(NET.db)try{NET.db.doc('data/users/'+acc.id+'/profile').set({name:acc.name,emo:acc.emo,w:acc.w,l:acc.l,...(acc.fid?{fid:acc.fid}:{})}).catch(()=>{})}catch(_){}}
 function saveRig(){if(!acc||!acc.id)return;if(acc.local){const o=lsGet(acc.name)||{};o.rig=RIG;lsSet(acc.name,o)}
 else if(NET.db)try{NET.db.doc('data/users/'+acc.id+'/rig').set(RIG).catch(()=>{})}catch(_){}}
 $('aDev').onclick=()=>{sh('aBtns',false);sh('aLocal',true);tx('aMsg','Tài khoản lưu ngay trên trình duyệt này, dùng được ở bất cứ đâu.');pills($('lEmo'),EMO,i=>EMO[i]==emoSel,i=>{emoSel=EMO[i]})};
@@ -1235,7 +1246,7 @@ if(!lsSet(n,{name:n,emo:emoSel,h:await hashPin(n,p),w:0,l:0})){tx('aMsg','Trình
 acc={id:'local:'+n.toLowerCase(),name:n,emo:emoSel,w:0,l:0,local:true};sh('aLocal',false);enterHub()};
 $('lLogin').onclick=async()=>{const n=$('lName').value.trim(),p=$('lPin').value,o=n&&lsGet(n);
 if(!o||o.h!==await hashPin(n,p)){tx('aMsg','Sai biệt danh hoặc PIN (tài khoản này chỉ lưu trên trình duyệt hiện tại).');return}
-acc={id:'local:'+n.toLowerCase(),name:o.name,emo:o.emo||'🐱',w:o.w|0,l:o.l|0,local:true};if(o.rig){RIG=sanRig(o.rig);syncTune()}sh('aLocal',false);enterHub()};
+acc={id:'local:'+n.toLowerCase(),name:o.name,emo:o.emo||'🐱',w:o.w|0,l:o.l|0,local:true,fid:o.fid};if(o.rig){RIG=sanRig(o.rig);syncTune()}sh('aLocal',false);enterHub()};
 // ---- đấu trực tiếp 1v1 giữa hai trình duyệt (WebRTC, trao đổi mã bằng tay, không cần máy chủ) ----
 let rtc=null,p2pRole='';
 const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))),dec=s=>JSON.parse(decodeURIComponent(escape(atob(s.trim()))));
@@ -1268,17 +1279,17 @@ if(!id){tx('aMsg','Không đăng nhập được bằng claude.ai ở đây. Hã
 NET.uid=id;try{NET.db=await claude.use('db')}catch(_){}
 try{if(NET.db){const s2=await NET.db.doc('data/users/'+id+'/rig').get();if(s2.exists){RIG=sanRig(s2.data());syncTune()}}}catch(_){}
 let p=null;try{if(NET.db){const s=await NET.db.doc('data/users/'+id+'/profile').get();if(s.exists)p=s.data()}}catch(_){}
-if(p){acc={id,name:String(p.name||'Tay đua').slice(0,14),emo:p.emo||'🐱',w:p.w|0,l:p.l|0};enterHub();return}
+if(p){acc={id,name:String(p.name||'Tay đua').slice(0,14),emo:p.emo||'🐱',w:p.w|0,l:p.l|0,fid:p.fid};enterHub();return}
 let nm='';try{nm=(await u.me()).name||''}catch(_){}
 $('aName').value=nm.slice(0,14);sh('aBtns',false);sh('aReg',true);tx('aMsg','Chưa có tài khoản game. Tạo nhanh nhé!');
 pills($('aEmo'),EMO,i=>EMO[i]==emoSel,i=>{emoSel=EMO[i]})}
 function enterHub(){sh('auth',false);showLobby();$('hCode').textContent=myCode.toUpperCase();tx('hWho',acc.emo+' '+acc.name);tx('hStat',acc.id?'Thắng '+(acc.w||0)+' · Thua '+(acc.l||0):'Khách: không lưu thành tích');tx('hMsg','');
-pills($('hModes'),['🎮 Solo (đua với bot)','⚔️ 1v1','👥 2v2','🏆 3v3'],i=>i==hubMode,i=>{hubMode=i;tx('hCreate',i?'Tạo phòng':'Chơi ngay')})}
+pills($('hModes'),['🎮 Solo (đua với bot)','⚔️ 1v1','👥 2v2','🏆 3v3'],i=>i==hubMode,i=>{hubMode=i;tx('hCreate',i?'Tạo phòng':'Chơi ngay')});frInit()}
 $('aLogin').onclick=login;
 $('aGuest').onclick=()=>{acc={id:null,name:'Khách'+(100+Math.random()*900|0),emo:'🐾'};enterHub()};
 $('aCreate').onclick=async()=>{const n=$('aName').value.trim().slice(0,14);if(!n){tx('aMsg','Nhập biệt danh nhé!');return}
 acc={id:NET.uid,name:n,emo:emoSel,w:0,l:0};try{if(NET.db)await NET.db.doc('data/users/'+NET.uid+'/profile').set({name:n,emo:emoSel,w:0,l:0})}catch(_){}enterHub()};
-$('hOut').onclick=()=>{acc=null;hideLobby();sh('auth',true);sh('aBtns',true);sh('aReg',false);sh('aLocal',false);tx('aMsg','Đã đăng xuất.')};
+$('hOut').onclick=()=>{try{NET.me&&NET.me.leave()}catch(_){}NET.me=null;FR=[];acc=null;hideLobby();sh('auth',true);sh('aBtns',true);sh('aReg',false);sh('aLocal',false);tx('aMsg','Đã đăng xuất.')};
 myCode=rcode();
 $('hCreate').onclick=()=>{if(!hubMode){AU.init();hideLobby();start();return}joinRoom(myCode,hubMode)};
 $('lobGo').onclick=()=>{AU.init();hideLobby();start()};
@@ -1288,6 +1299,57 @@ $('lobFs').onclick=toggleFS;$('lobHelp').onclick=()=>sh('help',true);$('helpX').
 $('helpBody').appendChild(document.querySelector('#menu .keys'));
 $('hJoin').onclick=()=>{const c=$('hId').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');if(c.length<3){tx('hMsg','Nhập ID phòng (ít nhất 3 ký tự).');return}joinRoom(c,0)};
 $('toHub').onclick=()=>{if(!acc)acc={id:null,name:'Khách',emo:'🐾'};enterHub()};
+// ---- bạn bè qua ID: kết bạn bằng ID ngắn, mời vào phòng bằng một cú bấm ----
+const FCH='ABCDEFGHJKMNPQRSTUVWXYZ23456789',gfid=()=>Array.from({length:6},()=>FCH[Math.random()*31|0]).join('');
+let FR=[],frOn={},INV=null,invTm=0;const frK=()=>'eola.fr.'+((acc&&acc.id)||'guest');
+function frSave(){try{localStorage.setItem(frK(),JSON.stringify(FR))}catch(_){}if(acc&&acc.id&&!acc.local&&NET.db)try{NET.db.doc('data/users/'+acc.id+'/friends').set({l:FR}).catch(()=>{})}catch(_){}}
+async function frLoad(){let l=[];try{l=JSON.parse(localStorage.getItem(frK()))||[]}catch(_){}
+if(acc&&acc.id&&!acc.local&&NET.db)try{const s=await NET.db.doc('data/users/'+acc.id+'/friends').get();if(s.exists)(s.data().l||[]).forEach(x=>{if(!l.some(y=>y.f===x.f))l.push(x)})}catch(_){}
+FR=l.filter(x=>x&&typeof x.f=='string').slice(0,30)}
+const regFid=()=>{if(acc&&acc.fid&&acc.id&&!acc.local&&NET.db)try{NET.db.doc('fids/'+acc.fid).set({u:acc.id,n:acc.name,e:acc.emo}).catch(()=>{})}catch(_){}};
+async function ensureFid(){if(!acc||acc.fid)return;
+if(acc.local){const o=lsGet(acc.name)||{};if(!o.fid){o.fid=gfid();lsSet(acc.name,o)}acc.fid=o.fid}
+else if(acc.id&&NET.db){acc.fid=gfid();try{for(let k=0;k<4;k++){const s=await NET.db.doc('fids/'+acc.fid).get();if(!s.exists||s.data().u===acc.id)break;acc.fid=gfid()}}catch(_){}saveProf()}
+else acc.fid=gfid()}
+async function getRoomCap(){if(NET.rm)return NET.rm;try{NET.rm=await claude.use('room')}catch(_){}return NET.rm}
+async function myRoom(){if(NET.me||NET.meBusy||!acc||!acc.fid)return;NET.meBusy=1;const room=await getRoomCap();
+if(room)try{const r=await room.join('eola-u-'+acc.fid);NET.me=r;r.presence({f:acc.fid,n:acc.name,e:acc.emo});r.on('inv',m=>{if(!m.isMe&&m.data)showInv(m.data)})}catch(_){}NET.meBusy=0}
+async function frInit(){const a=acc;await ensureFid();if(acc!==a||!acc)return;regFid();await frLoad();myRoom()}
+// vào phòng cá nhân của bạn: thấy bạn đó đang online thì (tuỳ chọn) gửi lời mời
+async function peerOf(f,send){const room=await getRoomCap();if(!room)return null;let r;try{r=await room.join('eola-u-'+f)}catch(_){return null}
+const info=await new Promise(res=>{let done=0,un=null;const fin=v=>{if(done)return;done=1;try{un&&un()}catch(_){}res(v)};
+const chk=ch=>{const p=(ch.peers||[]).find(q=>!q.isMe&&q.presence&&q.presence.f===f);if(p)fin({n:p.presence.n,e:p.presence.e})};
+try{un=r.onPeers(chk)}catch(_){}setTimeout(()=>fin(null),2500)});
+if(info&&send)try{await r.emit('inv',send)}catch(_){}
+setTimeout(()=>{try{r.leave()}catch(_){}},700);return info}
+function frRender(){const ul=$('frList');ul.textContent='';if(!FR.length){const li=document.createElement('li');li.textContent='Chưa có bạn bè. Nhập ID của bạn bè ở trên để kết bạn.';ul.appendChild(li);return}
+FR.forEach(x=>{const li=document.createElement('li'),d=document.createElement('i'),n=document.createElement('span'),bi=document.createElement('button'),bx=document.createElement('button');
+d.className='dot'+(frOn[x.f]?' on':'');n.className='nm';n.textContent=(x.e||'🐾')+' '+(x.n||'Tay đua')+' · '+x.f;
+bi.type=bx.type='button';bi.className=bx.className='tool';bi.textContent='✉️ Mời';bx.textContent='✕';bx.title='Xoá bạn';
+bi.onclick=()=>frInvite(x);bx.onclick=()=>{FR=FR.filter(y=>y!==x);frSave();frRender()};
+li.append(d,n,bi,bx);ul.appendChild(li)})}
+async function frCheck(){frOn={};frRender();if(!FR.length){tx('frMsg','');return}tx('frMsg','Đang kiểm tra ai đang online...');
+await Promise.all(FR.map(async x=>{const p=await peerOf(x.f);if(p){frOn[x.f]=1;if(p.n){x.n=p.n;x.e=p.e}}}));frSave();frRender();tx('frMsg','Chấm xanh = đang online.')}
+async function frInvite(x){if(!acc||!acc.fid)return;if(!NET.nr&&!hubMode){tx('frMsg','Hãy chọn 1v1 / 2v2 / 3v3 ở sảnh trước khi mời.');return}
+tx('frMsg','Đang gửi lời mời...');const inRoom=!!NET.nr,d={f:acc.fid,n:acc.name,e:acc.emo,c:inRoom?NET.code:myCode,m:inRoom?NET.mode:hubMode,mp:MAPID},p=await peerOf(x.f,d);
+if(!p){tx('frMsg',(x.n||x.f)+' đang offline hoặc chưa mở game.');return}
+frOn[x.f]=1;frRender();tx('frMsg','Đã mời '+x.n+'!');if(!inRoom){sh('fr',false);joinRoom(myCode,hubMode)}}
+function openFr(){if(!acc)return;ensureFid().then(()=>{tx('frMy',acc.fid||'------');sh('fr',true);frCheck()})}
+$('lobFr').onclick=openFr;$('wFr').onclick=openFr;$('frX').onclick=()=>sh('fr',false);$('frRef').onclick=frCheck;
+$('frCp').onclick=async()=>{const t=acc&&acc.fid||'';try{await navigator.clipboard.writeText(t);tx('frMsg','Đã sao chép ID '+t)}catch(_){tx('frMsg','ID của bạn: '+t)}};
+$('frAdd').onclick=async()=>{if(!acc)return;const f=$('frId').value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(f.length<4){tx('frMsg','Nhập ID bạn bè (6 ký tự).');return}
+if(f===acc.fid){tx('frMsg','Đó là ID của chính bạn 😄');return}if(FR.some(x=>x.f===f)){tx('frMsg','Đã là bạn bè rồi.');return}
+tx('frMsg','Đang tìm...');let p=await peerOf(f);
+if(!p&&NET.db)try{const s=await NET.db.doc('fids/'+f).get();if(s.exists)p={n:s.data().n,e:s.data().e}}catch(_){}
+if(!p){tx('frMsg','Không tìm thấy ID này. Kiểm tra lại ID, hoặc nhờ bạn ấy mở game rồi thử lại.');return}
+FR.push({f,n:String(p.n||'Tay đua').slice(0,14),e:p.e||'🐾'});frSave();$('frId').value='';tx('frMsg','Đã kết bạn với '+p.n+'!');frRender()};
+function showInv(d){if(NET.on||(S&&S.run))return;const c=String(d.c||'').replace(/[^a-z0-9]/gi,'').slice(0,8).toLowerCase(),m=Math.max(0,Math.min(3,d.m|0)),mp=Math.max(0,Math.min(MAPS.length-1,d.mp|0));if(c.length<3)return;
+INV={c,mp};$('invTx').textContent=String(d.e||'🐾').slice(0,4)+' '+String(d.n||'Bạn').slice(0,14)+' mời bạn đua'+(m?' '+m+'v'+m:'')+' · '+MAPS[mp].n+' · phòng '+c.toUpperCase();sh('invT',true);clearTimeout(invTm);invTm=setTimeout(()=>sh('invT',false),30000);try{sfx('gate')}catch(_){}}
+$('invNo').onclick=()=>{sh('invT',false);INV=null};
+$('invOk').onclick=()=>{const d=INV;sh('invT',false);INV=null;if(!d||!acc)return;sh('fr',false);
+if(d.mp!==MAPID){try{window.name='eolaMap='+d.mp+';eolaS='+encodeURIComponent(JSON.stringify({a:acc,r:RIG,s:sel,c:'hub',j:d.c}))}catch(_){}try{localStorage.setItem('eolaMap',d.mp)}catch(_){}location.reload();return}
+if(NET.nr)leaveRoom();joinRoom(d.c,0)};
+
 const pushPres=()=>{if(NET.nr)NET.nr.presence({n:acc.name,e:acc.emo,t:NET.team,r:NET.ready,m:NET.mode,c:sel,g:encRig(RIG),mp:curMap})};
 async function joinRoom(code,mode){tx('hMsg','Đang vào phòng...');let room=null;try{room=typeof claude!='undefined'&&await claude.use('room')}catch(_){}
 if(!room){if(mode<2){tx('hMsg','Phòng online không dùng được ở đây nên chuyển sang đấu trực tiếp 1v1.');$(mode?'hP2Pc':'hP2Pj').onclick();return}
@@ -1430,6 +1492,7 @@ const o=JSON.parse(decodeURIComponent(m[1]));if(!o||!o.a)return;
 sel=o.s|0;[...$('chars').children].forEach((x,j)=>x.classList.toggle('sel',j==sel));
 if(o.a.id&&!o.a.local){await login();if(!acc)return}
 else{acc=o.a;if(o.r){try{RIG=sanRig(o.r);syncTune()}catch(_){}}enterHub()}
+if(o.j)setTimeout(()=>joinRoom(String(o.j).replace(/[^a-z0-9]/gi,'').slice(0,8).toLowerCase(),0),900);
 }catch(_){}})();
 })();
 </script>
