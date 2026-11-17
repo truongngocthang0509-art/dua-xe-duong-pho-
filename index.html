@@ -214,7 +214,7 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
     <button class="go" id="hCreate" type="button">Tạo phòng</button>
     <div class="joinRow"><input class="inp" id="hId" maxlength="8" placeholder="Nhập mã phòng" autocomplete="off"><button class="go alt" id="hJoin" type="button">Vào phòng</button></div>
     <p class="msg2" id="hMsg"></p>
-    <details><summary>Không vào được phòng? Đấu trực tiếp 1v1</summary><div class="row"><button class="go alt" id="hP2Pc" type="button">Tạo phòng trực tiếp</button><button class="go alt" id="hP2Pj" type="button">Vào bằng mã</button></div></details>
+    <details hidden><summary>Không vào được phòng? Đấu trực tiếp 1v1</summary><div class="row"><button class="go alt" id="hP2Pc" type="button">Tạo phòng trực tiếp</button><button class="go alt" id="hP2Pj" type="button">Vào bằng mã</button></div></details>
   </section>
 </div>
 <div class="ov" id="auth" style="z-index:14"><div class="panel">
@@ -224,7 +224,7 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
   <div id="aReg" hidden><input class="inp" id="aName" maxlength="14" placeholder="Biệt danh của bạn" autocomplete="off"><div class="opts" id="aEmo" style="margin:10px 0"></div><button class="go" id="aCreate" type="button">Tạo tài khoản</button></div>
 </div></div>
 <div class="ov" id="wait" hidden style="z-index:12"><div class="panel">
-  <h2>Phòng <b id="wCode"></b> · <span id="wMode"></span></h2>
+  <h2>Phòng <b id="wCode"></b> · <span id="wMode"></span> <button class="tool" id="wCp" type="button" title="Sao chép mã phòng">📋</button></h2>
   <div class="tm"><div><h3>🔴 Đội Đỏ</h3><ul id="wT0"></ul></div><div><h3>🔵 Đội Xanh</h3><ul id="wT1"></ul></div></div>
   <p class="msg2" id="wMsg"></p>
   <div class="row"><button class="go alt" id="wTeam" type="button">Đổi đội</button><button class="go alt" id="wShop" type="button">🔧 Xưởng</button><button class="go alt" id="wFr" type="button">👥 Mời bạn</button><button class="go alt" id="wReady" type="button">Sẵn sàng</button><button class="go" id="wStart" type="button" hidden>Bắt đầu</button><button class="go alt" id="wLeave" type="button">Rời phòng</button></div>
@@ -1352,10 +1352,13 @@ if(NET.nr)leaveRoom();joinRoom(d.c,0)};
 
 const pushPres=()=>{if(NET.nr)NET.nr.presence({n:acc.name,e:acc.emo,t:NET.team,r:NET.ready,m:NET.mode,c:sel,g:encRig(RIG),mp:curMap})};
 let roomBusy=0;
+function mkLocalRoom(){let mp={},ph=[],hs={};const peers=()=>[{peer:'a',isMe:true,presence:mp}],note=()=>ph.forEach(f=>f({peers:peers()}));
+return{emit:async(t,d)=>{(hs[t]||[]).forEach(f=>f({peer:'a',isMe:true,data:d}))},on:(t,f)=>{(hs[t]=hs[t]||[]).push(f);return()=>{hs[t]=hs[t].filter(x=>x!==f)}},
+presence:async q=>{Object.assign(mp,q);note()},peers,onPeers:f=>{ph.push(f);setTimeout(()=>f({peers:peers()}),0);return()=>{ph=ph.filter(x=>x!==f)}},leave:()=>{}}}
 async function joinRoom(code,mode){if(roomBusy)return;roomBusy=1;
 try{tx('hMsg','Đang vào phòng...');const room=await getRoomCap();
-if(!room){if(mode<2){tx('hMsg','Phòng online không dùng được ở đây nên chuyển sang đấu trực tiếp 1v1.');$(mode?'hP2Pc':'hP2Pj').onclick();return}
-tx('hMsg','2v2 và 3v3 cần phòng online. Hãy chọn 1v1 để đấu trực tiếp.');return}
+if(!room){if(mode){enterRoom(mkLocalRoom(),code,mode);NET.local=true;renderWait();return}
+tx('hMsg','Phòng online không dùng được ở đây nên chưa vào phòng bằng mã được.');return}
 let nr=null;try{nr=await room.join('eola-'+code)}catch(_){}
 if(!nr){tx('hMsg','Không vào được phòng, thử lại.');return}
 enterRoom(nr,code,mode)}finally{roomBusy=0}}
@@ -1375,13 +1378,15 @@ tx('wCode',NET.code.toUpperCase());tx('wMode',NET.mode?NET.mode+'v'+NET.mode:'đ
 const cnt=[0,1].map(t=>ps.filter(p=>(p.presence.t|0)==t).length),ok=NET.mode&&cnt[0]==NET.mode&&cnt[1]==NET.mode&&ps.every(p=>p.presence.r)&&ps.every(p=>(p.presence.mp|0)===MAPID);
 const host=ps.slice().sort((a,b)=>a.peer<b.peer?-1:1)[0],isH=!!(host&&host.isMe);
 sh('wStart',isH);$('wStart').disabled=!ok;
-tx('wMsg',ok?(isH?'Sẵn sàng! Bấm Bắt đầu.':'Chờ chủ phòng bấm Bắt đầu...'):NET.mode?'Cần '+NET.mode+' người mỗi đội và tất cả bấm Sẵn sàng (hiện '+cnt[0]+' - '+cnt[1]+').':'')}
+tx('wMsg',ok?(isH?'Sẵn sàng! Bấm Bắt đầu.':'Chờ chủ phòng bấm Bắt đầu...'):NET.mode?'Cần '+NET.mode+' người mỗi đội và tất cả bấm Sẵn sàng (hiện '+cnt[0]+' - '+cnt[1]+').':'');
+if(NET.local)tx('wMsg','Phòng online chưa dùng được ở đây nên bạn bè chưa vào bằng mã được. Bạn cứ chỉnh xe trong 🔧 Xưởng.')}
+$('wCp').onclick=async()=>{const c=NET.code.toUpperCase();try{await navigator.clipboard.writeText(c);tx('wMsg','Đã sao chép mã phòng '+c)}catch(_){tx('wMsg','Mã phòng: '+c)}};
 $('wTeam').onclick=()=>{NET.team^=1;NET.ready=0;pushPres()};
 $('wReady').onclick=()=>{NET.ready^=1;pushPres()};
 $('wStart').onclick=()=>{NET.nr.emit('go',{}).catch(()=>{});startNet()};
 $('wLeave').onclick=()=>leaveRoom();
 function leaveRoom(msg){clearInterval(NET.iv);NET.offs.forEach(f=>f());NET.offs=[];try{NET.un&&NET.un()}catch(_){}try{NET.nr&&NET.nr.leave()}catch(_){}
-NET.nr=null;NET.on=false;NET.teamSet=false;NET.ready=0;NET.mode=0;sh('wait',false);acc?enterHub():showLobby();tx('hMsg',msg||'')}
+NET.nr=null;NET.local=false;NET.on=false;NET.teamSet=false;NET.ready=0;NET.mode=0;sh('wait',false);acc?enterHub():showLobby();tx('hMsg',msg||'')}
 function backToRoom(){NET.on=false;NET.ready=0;$('end').hidden=true;$('hud').hidden=true;sh('wait',true);pushPres();clearInterval(NET.iv);NET.iv=setInterval(pushPres,1000);renderWait()}
 function startNet(){if(NET.on||!NET.nr)return;const ps=NET.peers.filter(p=>p.presence&&p.presence.n).sort((a,b)=>a.peer<b.peer?-1:1),i=ps.findIndex(p=>p.isMe);if(i<0)return;
 NET.on=true;clearInterval(NET.iv);NET.lane=i%4;NET.row=i/4|0;NET.snap=ps.filter(p=>!p.isMe);NET.sendT=0;sh('wait',false);start()}
