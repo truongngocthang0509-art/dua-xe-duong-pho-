@@ -1,7 +1,14 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>
+window.EOLA_SUPABASE={url:'https://ouogpkbkapzdjwrnpxsi.supabase.co',key:'sb_publishable_BeZV-JSO0CzVPBEOfnRoSw_KMnVB9Go'};
+</script>
 <title>F1 Ẻo Lả Grand Prix</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
 <style>
 /* Layout: full-bleed 3D canvas with HUD pinned to the top and bottom edges; menu and results are scrollable overlays. Single dark look, committed. */
 :root{
@@ -138,6 +145,8 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
 .opt{font:800 14px var(--body);background:var(--card);color:var(--ink);border:3px solid transparent;border-radius:12px;padding:8px 12px;cursor:pointer}.opt.sel{border-color:var(--sun);background:#38306a}.opt:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){#visor,#sign{transition:none}}
 </style>
+</head>
+<body>
 
 <div id="stage"><canvas id="gl"></canvas></div>
 <div id="visor"></div>
@@ -219,7 +228,7 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
 </div>
 <div class="ov" id="auth" style="z-index:14"><div class="panel">
   <h1>F1 Ẻo Lả</h1><p id="aMsg">Đăng nhập để lưu thành tích và đua online, hoặc chơi khách.</p>
-  <div class="row" id="aBtns"><button class="go" id="aLogin" type="button">Đăng nhập</button><button class="go alt" id="aDev" type="button">Biệt danh + PIN (ngoài claude.ai)</button><button class="go alt" id="aGuest" type="button">Chơi khách</button></div>
+  <div class="row" id="aBtns"><button class="go" id="aLogin" type="button">Đăng nhập</button><button class="go alt" id="aDev" type="button">Biệt danh + PIN (lưu trên máy này)</button><button class="go alt" id="aGuest" type="button">Chơi khách</button></div>
   <div id="aLocal" hidden><input class="inp" id="lName" maxlength="14" placeholder="Biệt danh" autocomplete="username"><input class="inp" id="lPin" type="password" inputmode="numeric" maxlength="8" placeholder="Mã PIN 4–8 chữ số" autocomplete="current-password" style="margin-top:8px"><div class="opts" id="lEmo" style="margin:10px 0"></div><div class="row"><button class="go" id="lLogin" type="button">Đăng nhập</button><button class="go alt" id="lReg" type="button">Tạo tài khoản</button><button class="go alt" id="lBack" type="button">Quay lại</button></div></div>
   <div id="aReg" hidden><input class="inp" id="aName" maxlength="14" placeholder="Biệt danh của bạn" autocomplete="off"><div class="opts" id="aEmo" style="margin:10px 0"></div><button class="go" id="aCreate" type="button">Tạo tài khoản</button></div>
 </div></div>
@@ -255,6 +264,44 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
 </div></div>
 <div class="ov res" id="end" hidden></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* Cầu nối Supabase: tài khoản ẩn danh + bảng kv (lưu dữ liệu) + Realtime (phòng chơi) */
+(()=>{
+const C=window.EOLA_SUPABASE||{};let sb=null;
+try{if(window.supabase&&C.url&&C.key)sb=window.supabase.createClient(C.url,C.key,{auth:{persistSession:true,autoRefreshToken:true},realtime:{params:{eventsPerSecond:20}}})}catch(e){console.warn('Supabase init',e)}
+if(!sb){console.warn('Không khởi tạo được Supabase: kiểm tra URL/key và kết nối mạng.');return}
+let uidP=null;
+function getUid(){if(uidP)return uidP;uidP=(async()=>{const g=await sb.auth.getSession();if(g.data&&g.data.session&&g.data.session.user)return g.data.session.user.id;
+const r=await sb.auth.signInAnonymously();if(r.error)throw r.error;return r.data.user.id})();uidP.catch(()=>{uidP=null});return uidP}
+const user={id:()=>getUid(),me:async()=>({name:''})};
+const db={doc:path=>({
+ async get(){const r=await sb.from('kv').select('data').eq('path',path).maybeSingle();if(r.error)throw r.error;const d=r.data;return{exists:!!d,data:()=>d?d.data:undefined}},
+ async set(obj){await getUid();const r=await sb.from('kv').upsert({path,data:obj,updated_at:new Date().toISOString()});if(r.error)throw r.error}
+})};
+const rid=()=>(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36));
+const room={async join(name){
+ const me=rid(),ch=sb.channel('eola:'+name,{config:{broadcast:{self:true,ack:false},presence:{key:me}}});
+ let mp={},last='',ph=[],hs={};
+ const peers=()=>{const st=ch.presenceState(),a=[];for(const k in st){const m=st[k]&&st[k][st[k].length-1];if(m)a.push({peer:k,isMe:k===me,presence:m.p||{}})}
+  if(last&&!a.some(x=>x.isMe))a.push({peer:me,isMe:true,presence:mp});return a};
+ const note=()=>{const l={peers:peers()};ph.slice().forEach(f=>{try{f(l)}catch(_){}})};
+ ch.on('presence',{event:'sync'},note);
+ ch.on('broadcast',{event:'*'},m=>{const p=m.payload||{};(hs[m.event]||[]).slice().forEach(f=>{try{f({peer:p.f,isMe:p.f===me,data:p.d})}catch(_){}})});
+ try{await new Promise((res,rej)=>{const t=setTimeout(()=>rej(new Error('timeout')),8000);
+  ch.subscribe(s=>{if(s==='SUBSCRIBED'){clearTimeout(t);res()}else if(s==='CHANNEL_ERROR'||s==='TIMED_OUT'||s==='CLOSED'){clearTimeout(t);rej(new Error(s))}})})}
+ catch(e){try{sb.removeChannel(ch)}catch(_){}throw e}
+ return{
+  emit:async(t,d)=>{await ch.send({type:'broadcast',event:t,payload:{f:me,d}})},
+  on:(t,f)=>{(hs[t]=hs[t]||[]).push(f);return()=>{hs[t]=(hs[t]||[]).filter(x=>x!==f)}},
+  presence:async p=>{Object.assign(mp,p);const j=JSON.stringify(mp);if(j===last)return;last=j;await ch.track({p:mp});note()},
+  peers,
+  onPeers:f=>{ph.push(f);setTimeout(()=>f({peers:peers()}),0);return()=>{ph=ph.filter(x=>x!==f)}},
+  leave:()=>{try{sb.removeChannel(ch)}catch(_){}}
+ }}};
+window.claude={use:async n=>{if(n==='user')return user;if(n==='db')return db;if(n==='room')return room;throw new Error('unknown capability '+n)}};
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="document.body.insertAdjacentHTML('beforeend','<div style=&quot;position:fixed;inset:0;z-index:99;background:#1b1530;color:#fff4de;padding:24px;font:18px sans-serif&quot;>Không tải được thư viện three.js (cdnjs.cloudflare.com bị chặn hoặc mất mạng). Hãy bật mạng / tắt chặn rồi tải lại trang.</div>')"></script>
 <script>
 (()=>{
@@ -1228,7 +1275,7 @@ const GP=$('garage').parentNode,GN=$('garage').nextSibling;
 let myCode='';const rcode=()=>Array.from({length:5},()=>'abcdefghjkmnpqrstuvwxyz23456789'[Math.random()*31|0]).join('');
 function pills(el,list,get,set){el.textContent='';list.forEach((t,i)=>{const b=document.createElement('button');b.type='button';b.className='opt'+(get(i)?' sel':'');b.textContent=t;b.onclick=()=>{set(i);pills(el,list,get,set)};el.appendChild(b)})}
 addEventListener('pointerdown',()=>AU.init(),{once:true});
-// ---- tài khoản lưu ngay trên trình duyệt (dùng được ngoài claude.ai) ----
+// ---- tài khoản lưu ngay trên trình duyệt (chỉ lưu trên máy) ----
 const lsk=n=>'eola.u.'+n.trim().toLowerCase();
 const lsGet=n=>{try{return JSON.parse(localStorage.getItem(lsk(n)))}catch(_){return null}};
 const lsSet=(n,o)=>{try{localStorage.setItem(lsk(n),JSON.stringify(o));return true}catch(_){return false}};
@@ -1274,8 +1321,8 @@ catch(_){tx('pMsg','Mã không hợp lệ hoặc không kết nối được. H�
 $('pCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('pOut').value);tx('pMsg','Đã sao chép.')}catch(_){$('pOut').select();tx('pMsg','Hãy bấm giữ để sao chép.')}};
 $('pX').onclick=()=>{sh('p2p',false);try{rtc&&rtc.close()}catch(_){}rtc=null};
 async function login(){tx('aMsg','Đang đăng nhập...');let u=null;try{u=typeof claude!='undefined'&&await claude.use('user')}catch(_){}
-const id=u?await u.id():null;
-if(!id){tx('aMsg','Không đăng nhập được bằng claude.ai ở đây. Hãy dùng "Biệt danh + PIN" hoặc Chơi khách.');return}
+let id=null;try{id=u?await u.id():null}catch(_){}
+if(!id){tx('aMsg','Không kết nối được Supabase (kiểm tra mạng hoặc bật Anonymous sign-ins). Hãy dùng "Biệt danh + PIN" hoặc Chơi khách.');return}
 NET.uid=id;try{NET.db=await claude.use('db')}catch(_){}
 try{if(NET.db){const s2=await NET.db.doc('data/users/'+id+'/rig').get();if(s2.exists){RIG=sanRig(s2.data());syncTune()}}}catch(_){}
 let p=null;try{if(NET.db){const s=await NET.db.doc('data/users/'+id+'/profile').get();if(s.exists)p=s.data()}}catch(_){}
