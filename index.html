@@ -221,7 +221,7 @@ kbd{font:800 13px var(--body);background:rgba(255,255,255,.14);border:1px solid 
     <h3>🎮 Phòng chơi</h3><div class="opts" id="hModes"></div>
     <div class="codeBox"><span>Mã phòng của bạn (gửi cho bạn bè)</span><b id="hCode">-----</b><button class="tool" id="hCodeNew" type="button" title="Tạo mã mới">🔄</button><button class="tool" id="hCodeCp" type="button" title="Sao chép">📋</button></div>
     <button class="go" id="hCreate" type="button">Tạo phòng</button>
-    <div class="joinRow"><input class="inp" id="hId" maxlength="8" placeholder="Nhập mã phòng" autocomplete="off"><button class="go alt" id="hJoin" type="button">Vào phòng</button></div>
+    <div class="joinRow"><input class="inp" id="hId" maxlength="8" placeholder="Nhập mã phòng (số)" inputmode="numeric" autocomplete="off"><button class="go alt" id="hJoin" type="button">Vào phòng</button></div>
     <p class="msg2" id="hMsg"></p>
     <details hidden><summary>Không vào được phòng? Đấu trực tiếp 1v1</summary><div class="row"><button class="go alt" id="hP2Pc" type="button">Tạo phòng trực tiếp</button><button class="go alt" id="hP2Pj" type="button">Vào bằng mã</button></div></details>
   </section>
@@ -281,6 +281,7 @@ const db={doc:path=>({
 })};
 const rid=()=>(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36));
 const room={async join(name){
+ try{await getUid()}catch(_){}
  const me=rid(),ch=sb.channel('eola:'+name,{config:{broadcast:{self:true,ack:false},presence:{key:me}}});
  let mp={},last='',ph=[],hs={};
  const peers=()=>{const st=ch.presenceState(),a=[];for(const k in st){const m=st[k]&&st[k][st[k].length-1];if(m)a.push({peer:k,isMe:k===me,presence:m.p||{}})}
@@ -290,7 +291,7 @@ const room={async join(name){
  ch.on('broadcast',{event:'*'},m=>{const p=m.payload||{};(hs[m.event]||[]).slice().forEach(f=>{try{f({peer:p.f,isMe:p.f===me,data:p.d})}catch(_){}})});
  try{await new Promise((res,rej)=>{const t=setTimeout(()=>rej(new Error('timeout')),8000);
   ch.subscribe(s=>{if(s==='SUBSCRIBED'){clearTimeout(t);res()}else if(s==='CHANNEL_ERROR'||s==='TIMED_OUT'||s==='CLOSED'){clearTimeout(t);rej(new Error(s))}})})}
- catch(e){try{sb.removeChannel(ch)}catch(_){}throw e}
+ catch(e){console.error('Realtime join lỗi:',name,e);try{sb.removeChannel(ch)}catch(_){}throw e}
  return{
   emit:async(t,d)=>{await ch.send({type:'broadcast',event:t,payload:{f:me,d}})},
   on:(t,f)=>{(hs[t]=hs[t]||[]).push(f);return()=>{hs[t]=(hs[t]||[]).filter(x=>x!==f)}},
@@ -1272,7 +1273,7 @@ const NET={on:false,nr:null,mode:0,code:'',team:0,teamSet:false,ready:0,peers:[]
 const EMO=['🐱','🐶','🐰','🦆','🐹','🐻','🐸','🦊'];let acc=null,hubMode=1,emoSel=EMO[0];
 const sh=(id,v)=>{$(id).hidden=!v},tx=(id,t)=>{$(id).textContent=t};
 const GP=$('garage').parentNode,GN=$('garage').nextSibling;
-let myCode='';const rcode=()=>Array.from({length:5},()=>'abcdefghjkmnpqrstuvwxyz23456789'[Math.random()*31|0]).join('');
+let myCode='';const rcode=()=>Array.from({length:5},()=>'0123456789'[Math.random()*10|0]).join('');
 function pills(el,list,get,set){el.textContent='';list.forEach((t,i)=>{const b=document.createElement('button');b.type='button';b.className='opt'+(get(i)?' sel':'');b.textContent=t;b.onclick=()=>{set(i);pills(el,list,get,set)};el.appendChild(b)})}
 addEventListener('pointerdown',()=>AU.init(),{once:true});
 // ---- tài khoản lưu ngay trên trình duyệt (chỉ lưu trên máy) ----
@@ -1344,10 +1345,11 @@ $('hCodeNew').onclick=()=>{myCode=rcode();$('hCode').textContent=myCode.toUpperC
 $('hCodeCp').onclick=async()=>{try{await navigator.clipboard.writeText(myCode.toUpperCase());tx('hMsg','Đã sao chép mã phòng '+myCode.toUpperCase())}catch(_){tx('hMsg','Mã phòng: '+myCode.toUpperCase())}};
 $('lobFs').onclick=toggleFS;$('lobHelp').onclick=()=>sh('help',true);$('helpX').onclick=()=>sh('help',false);
 $('helpBody').appendChild(document.querySelector('#menu .keys'));
-$('hJoin').onclick=()=>{const c=$('hId').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');if(c.length<3){tx('hMsg','Nhập ID phòng (ít nhất 3 ký tự).');return}joinRoom(c,0)};
+$('hJoin').onclick=()=>{const c=$('hId').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');if(c.length<3){tx('hMsg','Nhập mã phòng (ít nhất 3 số).');return}
+if(!/^\d+$/.test(c)){tx('hMsg','Đây không phải mã phòng. Mã phòng chỉ gồm SỐ; còn ID chữ là ID kết bạn (nhập ở mục Bạn bè).');return}joinRoom(c,0)};
 $('toHub').onclick=()=>{if(!acc)acc={id:null,name:'Khách',emo:'🐾'};enterHub()};
 // ---- bạn bè qua ID: kết bạn bằng ID ngắn, mời vào phòng bằng một cú bấm ----
-const FCH='ABCDEFGHJKMNPQRSTUVWXYZ23456789',gfid=()=>Array.from({length:6},()=>FCH[Math.random()*31|0]).join('');
+const FCH='ABCDEFGHJKMNPQRSTUVWXYZ',gfid=()=>Array.from({length:6},()=>FCH[Math.random()*FCH.length|0]).join('');
 let FR=[],frOn={},INV=null,invTm=0;const frK=()=>'eola.fr.'+((acc&&acc.id)||'guest');
 function frSave(){try{localStorage.setItem(frK(),JSON.stringify(FR))}catch(_){}if(acc&&acc.id&&!acc.local&&NET.db)try{NET.db.doc('data/users/'+acc.id+'/friends').set({l:FR}).catch(()=>{})}catch(_){}}
 async function frLoad(){let l=[];try{l=JSON.parse(localStorage.getItem(frK()))||[]}catch(_){}
@@ -1417,7 +1419,7 @@ NET.offs.push(nr.on('hit',m=>{if(m.isMe||!m.data)return;const me=NET.peers.find(
 NET.un=nr.onPeers(ch=>{NET.peers=ch.peers;if(!NET.mode){const q=ch.peers.find(p=>p.presence&&p.presence.m);if(q)NET.mode=q.presence.m|0}renderWait()});
 pushPres();clearInterval(NET.iv);NET.iv=setInterval(pushPres,1000);
 hideLobby();sh('wait',true);renderWait();
-if(!mode)setTimeout(()=>{if(NET.nr===nr&&!NET.mode)leaveRoom('Không tìm thấy phòng '+code.toUpperCase()+'. Kiểm tra lại ID.')},4000)}
+if(!mode)setTimeout(()=>{if(NET.nr===nr&&!NET.mode)leaveRoom('Không tìm thấy phòng '+code.toUpperCase()+'. Kiểm tra mã, và chủ phòng phải chọn 1v1/2v2/3v3 rồi bấm Tạo phòng trước.')},8000)}
 function renderWait(){const ps=NET.peers.filter(p=>p.presence&&p.presence.n);
 if(!NET.teamSet&&ps.length){const c=[0,0];ps.forEach(p=>{if(!p.isMe)c[p.presence.t|0]++});NET.team=c[0]<=c[1]?0:1;NET.teamSet=true;pushPres()}
 tx('wCode',NET.code.toUpperCase());tx('wMode',NET.mode?NET.mode+'v'+NET.mode:'đang tìm phòng...');
